@@ -1,0 +1,7 @@
+/.mypy_cache
+/build
+/dist
+/python39
+/src/*.egg-info
+/env.ps1
+__pycache__
