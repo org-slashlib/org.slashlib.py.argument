@@ -20,10 +20,8 @@ class CArgs( NumberOfArguments ):
        self._optional = NArgs.SetOf.optional
        self._type     = NArgs.SetOf.type
 
-ERR_MSG_UNSUPPORTED_VALUE: Final[ str ] = \
-    "NumberOfArguments does not support value '%s'"
 ERR_MSG_UNSUPPORTED_TYPE: Final[ str ] = \
-    "NumberOfArguments does not support type '%s'"
+    "NArgs does not support type '%s'"
 
 class NArgs( NumberOfArguments, Enum ):
     SetOf        = ( None, type( int ), False )
@@ -38,11 +36,7 @@ class NArgs( NumberOfArguments, Enum ):
         elif ( isinstance( value, int )):
                return CArgs( value )
         elif ( isinstance( value, str )):
-               for enum in NArgs:
-                   if  ( value == enum.name ) or ( value == enum.value ):
-                         return enum
-                   else: continue
-               raise TypeError( ERR_MSG_UNSUPPORTED_VALUE %  value )
+               return NArgs( value )
         else:  raise TypeError( ERR_MSG_UNSUPPORTED_TYPE % type( value ))
 
     def __new__( cls, value, type, optional ):

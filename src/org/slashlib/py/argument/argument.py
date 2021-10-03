@@ -129,11 +129,15 @@ class Argument( property, ArgumentDecorator ):
               raise TypeError( gettext( ERR_MSG_TYPE_OF_POSITIONAL_ARGUMENTS ))
         else: pass
 
-        self.__init__keywordargs( group   = group,   action   = Action.parse( action ),
-                                  nargs   = NArgs.parse( nargs ), const = const,
-                                  default = default, type     = type,
-                                  choices = choices, required = required,
-                                  metavar = metavar, dest     = dest )
+        try:
+                self.__init__keywordargs( group   = group,
+                     action  = Action.parse( action ),
+                     nargs   = NArgs.parse( nargs ), const = const,
+                     default = default, type     = type,
+                     choices = choices, required = required,
+                     metavar = metavar, dest     = dest )
+        except ValueError as err:
+                raise TypeError( "@Argument: invalid parameter." ) from err
 
         self._consolidate_by_property( self._prop )
 
