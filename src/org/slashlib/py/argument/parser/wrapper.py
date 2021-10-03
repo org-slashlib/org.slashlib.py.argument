@@ -114,7 +114,7 @@ class ArgumentParserWrapper( ArgumentParser, metaclass = ABCMeta ):
 
         self._groups[ groupname ].add_argument( *nameorflags, **kwargs )
 
-    def parse( self, outstream: TextIO = sys.stdout,
+    def parse( self, arguments: str    = None,  outstream: TextIO = sys.stdout,
                      errstream: TextIO = sys.stderr ) -> ArgParseNamespace:
         """
             Parse arguments passed to the script/program
@@ -125,7 +125,7 @@ class ArgumentParserWrapper( ArgumentParser, metaclass = ABCMeta ):
               sys.stdout = outstream
               sys.stderr = errstream
 
-              try:     self._arguments = self._parser.parse_args()
+              try:     self._arguments = self._parser.parse_args( arguments )
               finally:
                        sys.stdout = oldstdout
                        sys.stderr = oldstderr

@@ -23,14 +23,16 @@ def get_property_name( prop: Optional[ property ]) -> Optional[ str ]:
           return prop.fget.__name__
     else: return None
 
-NAMEANDFLAGPATTERN: Final[ str ] = "-%s"
+# TODO ... see argumentparser for prefix_chars?
+FLAGPATTERN: Final[ str ] = "-%s"
+NAMEPATTERN: Final[ str ] = "--%s"
 
 def get_flag_and_name( prop: Optional[ property ]) -> Optional[ Tuple[ str, ... ]]:
     """ convert property name to argument name or flag """
     propname = get_property_name( prop )
     if  ( not ( propname is None )):
-          flag = "-%s" % propname[ 0 ]
-          name = "-%s" % propname
+          flag = FLAGPATTERN % propname[ 0 ]
+          name = NAMEPATTERN % propname
           return ( flag, name )
     else: return None
 

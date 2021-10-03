@@ -103,21 +103,21 @@ class Test_Module_action( TestCase ):
         self.assertIsNotNone( Action.Version )
         self.assertTrue( isinstance( Action.Version, Action ))
 
-    def test_Action_from_str_failure_01( self ):
+    def test_Action_parse_failure_01( self ):
         """
-            test 'Action' enumerations static method 'from_str'
+            test 'Action' enumerations static method 'parse'
         """
         from org.slashlib.py.argument.types.action import Action
-        dummy = Action.from_str( "vAlUe" )
+        dummy = Action.parse( "vAlUe" )
         self.assertIsNone( dummy )
 
 
-    def test_Action_from_str_success_01( self ):
+    def test_Action_parse_success_01( self ):
         """
-            test 'Action' enumerations static method 'from_str'
+            test 'Action' enumerations static method 'parse'
         """
         from org.slashlib.py.argument.types.action import Action
-        dummy = Action.from_str( "vErSiOn" )
+        dummy = Action.parse( "vErSiOn" )
         self.assertIsNotNone( dummy )
         self.assertTrue( dummy is Action.Version )
 

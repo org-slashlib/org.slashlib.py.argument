@@ -22,7 +22,7 @@ class Action( Enum ):
     Version     = "version"
 
     @staticmethod
-    def from_str( value: str ) -> Optional[ 'Action' ]:
+    def parse( value: str ) -> Optional[ 'Action' ]:
         """ Returns an Enumeration from 'value' or None """
         if  ( not ( value is None )):
               value = str( value ).lower()

@@ -7,9 +7,6 @@
 #
 """ tests for package 'org.slashlib.py.argument.typing' """
 
-#from .argument_decorator        import Test_Module_argument_decorator
-#from .argument_parser           import Test_Module_argument_parser
-#from .configuration_decorator   import Test_Module_configuration_decorator
-#from .property_decorator        import Test_Module_property_decorator
-
-#from .package                   import Test_Package
+from .argument_decorator        import Test_Module_argument_decorator
+from .argument_parser           import Test_Module_argument_parser
+from .package                   import Test_Package

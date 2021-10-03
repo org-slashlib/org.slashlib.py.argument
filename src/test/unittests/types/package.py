@@ -23,12 +23,21 @@ class Test_Package( TestCase ):
         self.assertTrue( isclass( Action ))
         self.assertTrue( issubclass( Action, Enum ))
 
-    def test_import_ActionProperty( self ):
+    def test_import_NArgs( self ):
         """
-            test if enumeration 'ActionProperty' can be imported from
+            test if enumeration 'NArgs' can be imported from
             'org.slashlib.py.argument.types'
         """
-        from org.slashlib.py.argument.types import ActionProperty
-        self.assertIsNotNone( ActionProperty )
-        self.assertTrue( isclass( ActionProperty ))
-        self.assertTrue( issubclass( ActionProperty, property ))
+        from org.slashlib.py.argument.types import NArgs
+        self.assertIsNotNone( NArgs )
+        self.assertTrue( isclass( NArgs ))
+        self.assertTrue( issubclass( NArgs, Enum ))
+
+    def test_import_NumberOfArguments( self ):
+        """
+            test if class 'NumberOfArguments' can be imported from
+            'org.slashlib.py.argument.types'
+        """
+        from org.slashlib.py.argument.types import NumberOfArguments
+        self.assertIsNotNone( NumberOfArguments )
+        self.assertTrue( isclass( NumberOfArguments ))

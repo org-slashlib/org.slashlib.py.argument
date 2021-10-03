@@ -6,8 +6,6 @@
 #   implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 """ tests for package 'org.slashlib.py.argument.types' """
-
-#from .action_property   import Test_Module_action_property
-#from .action            import Test_Module_action
-
-#from .package           import Test_Package
+from .action            import Test_Module_action
+from .nargs             import Test_Module_NArgs
+from .package           import Test_Package

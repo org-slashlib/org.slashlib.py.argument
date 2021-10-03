@@ -9,3 +9,7 @@
 
 # no dependencies on any 'org.slashlib.py.argument' imports
 from .action                import Action
+from .numberofarguments     import NumberOfArguments
+
+# depends on one or more modules previously imported
+from .nargs                 import NArgs

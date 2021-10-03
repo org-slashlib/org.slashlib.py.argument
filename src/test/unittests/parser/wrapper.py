@@ -116,8 +116,6 @@ class Test_Module_wrapper( TestCase ):
         import sys
         from   org.slashlib.py.argument                 import Argument
         from   org.slashlib.py.argument.parser.wrapper  import ArgumentParserWrapper
-        # make sure our new argument parser is not pulluted...
-        ArgumentParserWrapper.reset()
         # prepare sys.argv
         oldargv  = sys.argv
         sys.argv = [ '<testarg:program>' ]
@@ -126,6 +124,9 @@ class Test_Module_wrapper( TestCase ):
         stderr = StringIO()
 
         try:
+                 # make sure our new argument parser is not pulluted...
+                 ArgumentParserWrapper.reset()
+
                  class MyClass:
                        @Argument
                        @property
@@ -134,12 +135,7 @@ class Test_Module_wrapper( TestCase ):
                            pass
 
                  parser = ArgumentParserWrapper.getInstance()
-
-                 with self.assertRaises( SystemExit ):
-                      parser.parse( stdout, stderr )
-
-                 self.assertTrue( stdout.getvalue() == "" )
-                 self.assertTrue( stderr.getvalue().startswith( "usage: <testarg:program> [-h] -f F" ))
+                 parser.parse( outstream = stdout, errstream = stderr )
         finally:
                  sys.argv = oldargv
                  stdout.close()

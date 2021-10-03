@@ -7,6 +7,6 @@
 #
 """ tests for package 'org.slashlib.py.argument' """
 
-from .argument          import Test_Module_argument
-#from .configuration     import Test_Module_configuration
-#from .package           import Test_Package
+from .argument                  import Test_Module_argument
+from .argument_return_type      import Test_Module_argument_return_type
+from .package                   import Test_Package

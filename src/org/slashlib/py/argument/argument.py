@@ -17,6 +17,8 @@ from typing                             import Union
 
 from org.slashlib.py.argument.parser    import register
 from org.slashlib.py.argument.types     import Action
+from org.slashlib.py.argument.types     import NArgs
+from org.slashlib.py.argument.types     import NumberOfArguments
 from org.slashlib.py.argument.typing    import ArgumentDecorator
 from org.slashlib.py.argument.typing    import ArgumentParser
 
@@ -38,9 +40,9 @@ ERR_MSG_NO_RETURN_TYPE: Final[ str ] = \
 ERR_MSG_MULTIPLE_RETURN_TYPES: Final[ str ] = \
     "@Argument cannot determine return type for property '%s'. Too many possible types."
 ERR_MSG_RETURN_TYPE_MISMATCH: Final[ str ] = \
-    "Returntype missmatch: @Arguments( type=? ) does not match property '%s's return type."
-ERR_MSG_REQUIRED_MISMATCH: Final[ str ] = \
-    "Ambiguous setting for argument 'required'. Missmatching @Arguments( required=? ) and property '%s's return type."
+    "Returntype missmatch: @Arguments( type='%s' ) does not match property '%s's return type(s) '%s'."
+ERR_MSG_OPTIONAL_MISMATCH: Final[ str ] = \
+    "Missmatch between @Arguments( nargs='%s' ) and property '%s's return type (optional vs. mandatory)."
 ERR_MSG_ELEMENT_AFTER_PROPERTY: Final[ str ] = \
     "Argument.__init__: Supernumerary positional argument after argument of type 'property'"
 ERR_MSG_ELEMENT_AFTER_STR: Final[ str ] = \
@@ -80,13 +82,13 @@ class Argument( property, ArgumentDecorator ):
     """
     def __init__( self, *args: Union[ property, str ],
                   group:    Optional[ str  ] = None,
-                  action:   Action = Action.Store, \
-                  nargs:    Optional[ Union[ int, str ]] = None, \
-                  const:    Optional[ Union[ bool, int, float, str ]] = None, \
-                  default:  Optional[ Union[ bool, int, float, str ]] = None, \
-                  type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = None, \
-                  choices:  Optional[ Tuple[ Union[ bool, int, float, str ], ... ]] = None, \
-                  required: Optional[ bool ] = None, help: Optional[ str ] = None, \
+                  action:   Optional[ str  ] = None,
+                  nargs:    Optional[ Union[ int, str ]] = None,
+                  const:    Optional[ Union[ bool, int, float, str ]] = None,
+                  default:  Optional[ Union[ bool, int, float, str ]] = None,
+                  type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = None,
+                  choices:  Optional[ Tuple[ Union[ bool, int, float, str ], ... ]] = None,
+                  required: Optional[ bool ] = None, help: Optional[ str ] = None,
                   metavar:  Optional[ str  ] = None, dest: Optional[ str ] = None ) -> None:
         """
             Args:
@@ -127,8 +129,8 @@ class Argument( property, ArgumentDecorator ):
               raise TypeError( gettext( ERR_MSG_TYPE_OF_POSITIONAL_ARGUMENTS ))
         else: pass
 
-        self.__init__keywordargs( group   = group,   action   = action,
-                                  nargs   = nargs,   const    = const,
+        self.__init__keywordargs( group   = group,   action   = Action.parse( action ),
+                                  nargs   = NArgs.parse( nargs ), const = const,
                                   default = default, type     = type,
                                   choices = choices, required = required,
                                   metavar = metavar, dest     = dest )
@@ -166,7 +168,7 @@ class Argument( property, ArgumentDecorator ):
     def __init__keywordargs( self,
         group:    Optional[ str  ] = None,
         action:   Action = Action.Store,
-        nargs:    Optional[ Union[ int, str ]] = None,
+        nargs:    NumberOfArguments = None,
         const:    Optional[ Union[ bool, int, float, str ]] = None,
         default:  Optional[ Union[ bool, int, float, str ]] = None,
         type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = None,
@@ -178,7 +180,7 @@ class Argument( property, ArgumentDecorator ):
         """
         self._group:    Optional[ str  ]    = group
         self._action:   Action              = action
-        self._nargs:    Optional[ Union[ int, str ]]    = nargs
+        self._nargs:    NumberOfArguments   = nargs
         self._const:    Optional[ Union[ bool, int, float, str ]]   = const
         self._default:  Optional[ Union[ bool, int, float, str ]]   = default
         self._type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = type
@@ -241,7 +243,7 @@ class Argument( property, ArgumentDecorator ):
         if  ( not ( prop is None )):
               self._consolidate_flag_and_name( prop )
               self._consolidate_help( prop )
-              self._consolidate_type_and_required( prop )
+              self._consolidate_type_and_nargs( prop )
               # first step: register self {@Argument} as being available
               #             for use by an argument parser.
               register( self )
@@ -269,20 +271,25 @@ class Argument( property, ArgumentDecorator ):
               raise AttributeError( gettext( ERR_MSG_NO_HELP_TEXT ) % ( self._propertyname ))
         else: pass
 
-    def _consolidate_type_and_required( self, prop: property ):
+    def _consolidate_type_and_nargs( self, prop: property ):
         """ set self._type and self._required, if not already set """
         returntype = get_return_type( prop )
         isoptional = False
 
         if  ( not ( returntype is None )):
               returntype = returntype if isinstance( returntype, tuple ) else ( returntype, )
-              isoptional = True if ( None in returntype ) else False
+              nonetype   = type( None )
+              isoptional = True if ( nonetype in returntype ) else False
+
+              if  ( isoptional ):
+                    returntype = [ tpe for tpe in returntype if not tpe is nonetype ]
+              else: pass
 
               if  ( not ( self._type is None )):
                     # ( not ( returntype is None )) and ( not ( self._type is None ))
                     # check if self._type matches returntype from property.fget -> type:
                     if  ( not ( self._type in returntype )):
-                          errormsg = gettext( ERR_MSG_RETURN_TYPE_MISMATCH ) % ( self._propertyname )
+                          errormsg = gettext( ERR_MSG_RETURN_TYPE_MISMATCH ) % ( self._type, self._propertyname, str( returntype ))
                           raise TypeError( errormsg )
                     else: # self._type can be found in returntype therefor self._type is valid.
                           pass
@@ -308,28 +315,26 @@ class Argument( property, ArgumentDecorator ):
               # this means self._type defines the return type
               pass
 
-        if  ( self._required is None ):
-              self._required = not isoptional
-        elif( not ( self._required == ( not isoptional ))):
-              raise AttributeError( gettext( ERR_MSG_REQUIRED_MISMATCH ) % ( self._propertyname ))
+        if  ( not ( self._nargs is None )) and ( self._nargs.optional != isoptional ):
+              raise AttributeError( gettext( ERR_MSG_OPTIONAL_MISMATCH ) % ( self._nargs, self._propertyname ))
         else: pass
 
     def _appendToParser( self, parser: ArgumentParser ):
         """ Append this @Argument to parsers arguments. """
         nmrflgs: Tuple[ str, ... ] = cast( Tuple, self._nameorflags )
-        parser.addArgument( *nmrflgs,                                          action   = self.action,
-                                   nargs = self.nargs, const   = self.const,   default  = self.default,
-                                   type  = self.type,  choices = self.choices, required = self.required,
-                                   help  = self.help,  metavar = self.metavar, dest     = self.dest )
+        parser.addArgument( *nmrflgs,                      action   = self.action,   nargs = self.nargs,
+                                   const   = self.const,   default  = self.default,  type  = self.type,
+                                   choices = self.choices, required = self.required, help  = self.help,
+                                   metavar = self.metavar, dest     = self.dest )
 
     def _appendToGroup( self, parser: ArgumentParser ):
         """ Append this @Argument to a mutual exclusive parser group. """
         nmrflgs: Tuple[ str, ... ] = cast( Tuple, self._nameorflags )
         group:   str               = cast( str, self.group )
-        parser.addGroupedArgument( group,              *nmrflgs,               action   = self.action,
-                                   nargs = self.nargs, const   = self.const,   default  = self.default,
-                                   type  = self.type,  choices = self.choices, required = self.required,
-                                   help  = self.help,  metavar = self.metavar, dest     = self.dest )
+        parser.addGroupedArgument( group,  *nmrflgs,       action   = self.action,   nargs = self.nargs,
+                                   const   = self.const,   default  = self.default,  type  = self.type,
+                                   choices = self.choices, required = self.required, help  = self.help,
+                                   metavar = self.metavar, dest     = self.dest )
 
     def append( self, parser: ArgumentParser ):
         """
@@ -350,9 +355,9 @@ class Argument( property, ArgumentDecorator ):
         else: self._appendToParser( parser )
 
     @property
-    def action( self ) -> Optional[ str ]:
+    def action( self ) -> str:
         """ Returns @Argument 'action' in string format. """
-        return str( self._action )
+        return Action.Store.value if self._action is None else self._action.value
 
     @property
     def choices( self ) -> Optional[ Tuple[ Union[ bool, int, float, str ], ... ]]:
@@ -397,7 +402,7 @@ class Argument( property, ArgumentDecorator ):
     @property
     def nargs( self ) -> Optional[ Union[ int, str ]]:
         """ Returns @Argument 'nargs'. """
-        return self._nargs
+        return self._nargs if self._nargs is None else self._nargs.value
 
     @property
     def required( self ) -> Optional[ bool ]:
