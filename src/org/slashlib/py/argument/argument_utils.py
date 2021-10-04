@@ -42,14 +42,21 @@ def get_help_string( prop: Optional[ property ]) -> Optional[ str ]:
 
 STR_RETURN: Final[ str ] = "return"
 
-def get_return_type( prop: Optional[ property ]) -> Optional[ Union[ Type, Tuple[ Type, ... ]]]:
+def get_return_type( prop: Optional[ property ]) -> Optional[ Union[ Tuple[ Type, ... ]]]:
     """ retrieve return type property.fget annotation and use it as "type" """
     if  ( not ( prop is None )) and ( not ( prop.fget is None )):
           try :
                  returntypes = get_type_hints( prop.fget )[ STR_RETURN ]
                  asargs      = get_args( returntypes )
+                 returntuple = None
                  if  ( len( asargs ) == 0 ):
-                       return returntypes # returntypes is [ str | int | ... ]
-                 else: return asargs # returntypes is [ Optional | Union | ... ]
+                       returntuple = returntypes # returntypes is [ str | int | ... ]
+                 else: returntuple = asargs # returntypes is [ Optional | Union | ... ]
+
+                 if  ( not ( returntuple is None )):
+                       returntuple = returntuple if isinstance( returntuple, tuple ) else ( returntuple, )
+                 else: pass
+
+                 return returntuple
           except KeyError: return None # KeyError: 'return'
     else: return None

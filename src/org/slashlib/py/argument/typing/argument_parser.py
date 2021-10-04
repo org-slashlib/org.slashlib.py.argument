@@ -5,11 +5,13 @@
 #   argument_parser.py  is distributed WITHOUT ANY WARRANTY; without even the
 #   implied warranty of MERCHANTABILITY or FITNESS FOR  A PARTICULAR PURPOSE.
 #
-from abc        import abstractmethod
-from typing     import Any
-from typing     import Protocol
-from typing     import TextIO
-from typing     import runtime_checkable
+import sys
+from   abc          import abstractmethod
+from   argparse     import Namespace      as ArgParseNamespace
+from   typing       import Any
+from   typing       import Protocol
+from   typing       import TextIO
+from   typing       import runtime_checkable
 
 class ArgumentParser( Protocol ):
     """
@@ -46,7 +48,8 @@ class ArgumentParser( Protocol ):
         raise NotImplementedError
 
     @abstractmethod
-    def parse( self, outstream: TextIO, errstream: TextIO ) -> Any:
+    def parse( self, arguments: str    = None,  outstream: TextIO = sys.stdout,
+                     errstream: TextIO = sys.stderr ) -> ArgParseNamespace:
         """
             Parse arguments passed to the script/program
         """

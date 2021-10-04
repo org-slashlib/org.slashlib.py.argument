@@ -61,7 +61,7 @@ class ArgumentParserWrapper( ArgumentParser, metaclass = ABCMeta ):
         else: return False
 
     @staticmethod
-    def reset():
+    def reset() -> None:
         """
             Implemented for testing purposes. Usually this feature should not be
             required.

@@ -10,6 +10,7 @@
 from gettext                            import gettext
 from typing                             import cast
 from typing                             import Final
+from typing                             import List
 from typing                             import Optional
 from typing                             import Tuple
 from typing                             import Type
@@ -170,9 +171,9 @@ class Argument( property, ArgumentDecorator ):
         else: pass
 
     def __init__keywordargs( self,
-        group:    Optional[ str  ] = None,
-        action:   Action = Action.Store,
-        nargs:    NumberOfArguments = None,
+        group:    Optional[ str  ]   = None,
+        action:   Optional[ Action ] = None,
+        nargs:    Optional[ NumberOfArguments ] = None,
         const:    Optional[ Union[ bool, int, float, str ]] = None,
         default:  Optional[ Union[ bool, int, float, str ]] = None,
         type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = None,
@@ -183,8 +184,8 @@ class Argument( property, ArgumentDecorator ):
             Initialize members from keyword arguments.
         """
         self._group:    Optional[ str  ]    = group
-        self._action:   Action              = action
-        self._nargs:    NumberOfArguments   = nargs
+        self._action:   Action              = Action.Store if action is None else action
+        self._nargs:    Optional[ NumberOfArguments ]   = nargs
         self._const:    Optional[ Union[ bool, int, float, str ]]   = const
         self._default:  Optional[ Union[ bool, int, float, str ]]   = default
         self._type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = type
@@ -277,16 +278,14 @@ class Argument( property, ArgumentDecorator ):
 
     def _consolidate_type_and_nargs( self, prop: property ):
         """ set self._type and self._required, if not already set """
-        returntype = get_return_type( prop )
+        returntype: Optional[ Union[ Tuple[ Type, ... ], List[ Type ]]] = get_return_type( prop )
         isoptional = False
 
         if  ( not ( returntype is None )):
-              returntype = returntype if isinstance( returntype, tuple ) else ( returntype, )
-              nonetype   = type( None )
-              isoptional = True if ( nonetype in returntype ) else False
+              isoptional = True if ( type( None ) in returntype ) else False
 
               if  ( isoptional ):
-                    returntype = [ tpe for tpe in returntype if not tpe is nonetype ]
+                    returntype = [ tpe for tpe in returntype if not tpe is type( None )]
               else: pass
 
               if  ( not ( self._type is None )):
@@ -406,7 +405,7 @@ class Argument( property, ArgumentDecorator ):
     @property
     def nargs( self ) -> Optional[ Union[ int, str ]]:
         """ Returns @Argument 'nargs'. """
-        return self._nargs if self._nargs is None else self._nargs.value
+        return self._nargs if self._nargs is None else self._nargs.value # type: ignore
 
     @property
     def required( self ) -> Optional[ bool ]:

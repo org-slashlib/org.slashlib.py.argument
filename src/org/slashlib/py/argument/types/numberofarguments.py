@@ -5,24 +5,21 @@
 #   nargs.py  is distributed WITHOUT ANY WARRANTY; without even the implied
 #   warranty of  MERCHANTABILITY  or  FITNESS  FOR  A  PARTICULAR  PURPOSE.
 #
-from typing                             import Type
-from typing                             import Union
+from abc                import abstractmethod
+from typing             import Final
+from typing             import Type
+from typing             import Union
+
+ERR_MSG_ABSTRACT_PROPERTY_TYPE    : Final[ str ] = "Called 'get' on abstract property 'type'"
+ERR_MSG_ABSTRACT_PROPERTY_OPTIONAL: Final[ str ] = "Called 'get' on abstract property 'optional'"
 
 class NumberOfArguments:
     @property
-    def type( self ) -> Union[ Type[ int ], Type[ int ]]:
-        return self._type
+    @abstractmethod
+    def type( self ) -> Union[ Type[ int ], Type[ str ]]:
+        raise TypeError( ERR_MSG_ABSTRACT_PROPERTY_TYPE )
 
     @property
+    @abstractmethod
     def optional( self ) -> bool:
-        return self._optional
-
-    @property
-    def name( self ) -> str:
-        return self._name_
-
-    @property
-    def value( self ) -> Union[ str, int ]:
-        if  ( not ( self._count_ is None )):
-              return self._count_
-        else: return self._value_
+        raise TypeError( ERR_MSG_ABSTRACT_PROPERTY_OPTIONAL )

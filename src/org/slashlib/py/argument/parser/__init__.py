@@ -31,10 +31,10 @@ def register( decorator: ArgumentDecorator ) -> bool:
     """
         Register an @Argument with an ArgumentParser.
     """
-    ArgumentParserWrapper.register( decorator )
+    return ArgumentParserWrapper.register( decorator )
 
-def reset():
+def reset() -> None:
     """
         Implemented for testing purposes.
     """
-    ArgumentParserWrapper.reset()
+    return ArgumentParserWrapper.reset()
