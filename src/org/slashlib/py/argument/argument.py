@@ -16,6 +16,7 @@ from typing                             import Tuple
 from typing                             import Type
 from typing                             import Union
 
+from org.slashlib.py.argument.parser    import requestInstance      as requestParserInstance
 from org.slashlib.py.argument.parser    import register
 from org.slashlib.py.argument.types     import Action
 from org.slashlib.py.argument.types     import NArgs
@@ -23,27 +24,30 @@ from org.slashlib.py.argument.types     import NumberOfArguments
 from org.slashlib.py.argument.typing    import ArgumentDecorator
 from org.slashlib.py.argument.typing    import ArgumentParser
 
+from .argument_utils                    import get_dest_from_arg
 from .argument_utils                    import get_flag_and_name
 from .argument_utils                    import get_help_string
 from .argument_utils                    import get_property_name
 from .argument_utils                    import get_return_type
 
-ERR_MSG_PARAMETER_PROPERTY_TYPE: Final[ str ] = \
-    "Argument.__call__: Parameter 'prop' must be of type 'property'"
+ERR_MSG_AMBIGUOUS_HELP_TEXT: Final[ str ] = \
+    "Different help texts found in @Argument parameter 'help' and __doc__ string of property '%s'."
+ERR_MSG_ARGUMENT_ACCESS_BEFORE_PARSING: Final[ str ] = \
+    "Command-line arguments must be parsed prior accessing them"
+ERR_MSG_MULTIPLE_RETURN_TYPES: Final[ str ] = \
+    "@Argument cannot determine return type for property '%s'. Too many possible types."
 ERR_MSG_NO_FLAG_OR_NAME: Final[ str ] = \
     "@Argument cannot determine 'flag' or 'name' for property '%s'."
 ERR_MSG_NO_HELP_TEXT: Final[ str ] = \
     "@Argument cannot determine help text from __doc__ string of property '%s'."
-ERR_MSG_AMBIGUOUS_HELP_TEXT: Final[ str ] = \
-    "Different help texts found in @Argument parameter 'help' and __doc__ string of property '%s'."
 ERR_MSG_NO_RETURN_TYPE: Final[ str ] = \
     "@Argument cannot determine return type for property '%s'. Return type missing."
-ERR_MSG_MULTIPLE_RETURN_TYPES: Final[ str ] = \
-    "@Argument cannot determine return type for property '%s'. Too many possible types."
-ERR_MSG_RETURN_TYPE_MISMATCH: Final[ str ] = \
-    "Returntype missmatch: @Arguments( type='%s' ) does not match property '%s's return type(s) '%s'."
 ERR_MSG_OPTIONAL_MISMATCH: Final[ str ] = \
     "Missmatch between @Arguments( nargs='%s' ) and property '%s's return type (optional vs. mandatory)."
+ERR_MSG_PARAMETER_PROPERTY_TYPE: Final[ str ] = \
+    "Argument.__call__: Parameter 'prop' must be of type 'property'"
+ERR_MSG_RETURN_TYPE_MISMATCH: Final[ str ] = \
+    "Returntype missmatch: @Arguments( type='%s' ) does not match property '%s's return type(s) '%s'."
 ERR_MSG_ELEMENT_AFTER_PROPERTY: Final[ str ] = \
     "Argument.__init__: Supernumerary positional argument after argument of type 'property'"
 ERR_MSG_ELEMENT_AFTER_STR: Final[ str ] = \
@@ -117,12 +121,14 @@ class Argument( property, ArgumentDecorator ):
                 dest:           The name of the attribute to be added to the
                                 object returned by <code>parse_args()</code>
         """
+        self._argname: Optional[ str ] = None
         self._prop: Optional[ property ] = None
         self._propertyname: Optional[ str ] = None
         self._nameorflags: Optional[ Tuple[ str, ... ]] = None
 
         self.__init___prop( *args )
         self.__init___nameorflags( *args )
+        self.__init___dest( *args, dest = dest )
 
         # at this point one of [ self_prop, self._nameorflags] must not be None!
         if (( self._prop is self._nameorflags is None ) and
@@ -131,14 +137,14 @@ class Argument( property, ArgumentDecorator ):
         else: pass
 
         try:
-                self.__init__keywordargs( group   = group,
-                     action  = Action.parse( action ),
-                     nargs   = NArgs.parse( nargs ), const = const,
-                     default = default, type     = type,
-                     choices = choices, required = required,
-                     metavar = metavar, dest     = dest )
+               self.__init__keywordargs( group   = group,
+                    action   = Action.parse( action ),
+                    nargs    = NArgs.parse( nargs ),
+                    const    = const,    default = default,
+                    type     = type,     choices = choices,
+                    required = required, metavar = metavar )
         except ValueError as err:
-                raise TypeError( "@Argument: invalid parameter." ) from err
+               raise TypeError( "@Argument: invalid parameter." ) from err
 
         self._consolidate_by_property( self._prop )
 
@@ -170,6 +176,56 @@ class Argument( property, ArgumentDecorator ):
               self._nameorflags  = cast( Tuple[ str, ... ], args )
         else: pass
 
+    def __init___dest( self, *args: Union[ property, str ], dest: Optional[ str ] = None ):
+        """
+            Initialize member self._dest from positional arguments or dest keyword argument.
+            'dest' is the destination key, which an argument value is mapped to.
+            'dest' can as well be set by keyword, which would be a simple 'name' without any
+            leading prefixes like '-' or '--'
+            If 'dest' is set as keyword, it will override all of the following, alternate
+            possibilities.
+            If 'dest' is specified by positional arguments, it "should" be the first positional
+            argument, that can be found. This means, it is valid to specify multiple 'dest's via
+            positional arguments.
+            If no 'dest' is specified, the first 'name' argument (e.g. '--<name>') will be set
+            as 'dest'. Again, if there is no 'name' argument, the first 'flag' argument (e.g.:
+            '-<flag>') will be set as 'dest'.
+            argparse does not like it, if 'dest' is set by positional arguments and, as well,
+            by keyword parameters.
+        """
+        destinations = list()
+        names = list()
+        flags = list()
+        if  ( len( args ) > 0 ) and ( isinstance( args[ 0 ], str )):
+              for value in args:
+                  if  ( not isinstance( value, str )):
+                        raise TypeError( gettext( ERR_MSG_ELEMENT_AFTER_STR ))
+                  elif( value.startswith( "-"  )):
+                        if  ( value.startswith( "--"  )):
+                              names.append( value )
+                        else: flags.append( value )
+                  else: destinations.append( value )
+
+              if  ( len( destinations ) > 0 ) and ( not ( dest is None )):
+                    raise TypeError( "Ambiguous setting for 'dest' (found in pos. args and keyword arg!)" )
+              elif( not ( dest is None )):
+                    self._argname = dest
+                    self._dest    = dest
+              elif( len( destinations ) > 0 ):
+                    self._argname = destinations[ 0 ]
+                    self._dest    = None
+              elif( len( names ) > 0 ):
+                    self._argname = get_dest_from_arg( names[ 0 ])
+                    self._dest    = self._argname
+              elif( len( flags ) > 0 ):
+                    self._argname = get_dest_from_arg( flags[ 0 ])
+                    self._dest    = self._argname
+              else: raise TypeError( "Could not determine 'dest' from arguments" )
+
+        elif( len( args ) > 0 ) and ( isinstance( args[ 0 ], property )):
+              self._argname = get_property_name( args[ 0 ] )
+              self._dest    = self._argname
+
     def __init__keywordargs( self,
         group:    Optional[ str  ]   = None,
         action:   Optional[ Action ] = None,
@@ -178,8 +234,9 @@ class Argument( property, ArgumentDecorator ):
         default:  Optional[ Union[ bool, int, float, str ]] = None,
         type:     Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]] = None,
         choices:  Optional[ Tuple[ Union[ bool, int, float, str ], ... ]] = None,
-        required: Optional[ bool ] = None, help: Optional[ str ] = None,
-        metavar:  Optional[ str  ] = None, dest: Optional[ str ] = None ):
+        required: Optional[ bool ] = None,
+        help:     Optional[ str  ] = None,
+        metavar:  Optional[ str  ] = None ):
         """
             Initialize members from keyword arguments.
         """
@@ -193,7 +250,6 @@ class Argument( property, ArgumentDecorator ):
         self._required: Optional[ bool ]    = required
         self._help:     Optional[ str  ]    = help
         self._metavar:  Optional[ str  ]    = metavar
-        self._dest:     Optional[ str  ]    = dest
 
     def __get__( self, obj, objtype = None ):
         """
@@ -205,7 +261,44 @@ class Argument( property, ArgumentDecorator ):
               raise AttributeError( gettext( ERR_MSG_PROPERTY_ACCESS_PERMITTED ))
         elif  self._prop.fget is None:
               raise AttributeError( gettext( ERR_MSG_UNREADABLE_ATTRIBUTE ))
-        else: return self._prop.fget( obj )
+        else: return self.__get_local__( self._prop.fget( obj ))
+
+    def __get_local__( self, propertyvalue ):
+        """
+            Multilayer 'get' of the property, which is represented by this @Argument.
+            This method is used to define the lookup order for a command-line argument.
+            1. If there is a property value, which is not None, always return it.
+               Note: You can programatically set values to properties and you expect them
+                     to be returned from the property. This is why a property value has
+                     precedence over anything else.
+                     => Always set an @Argument-property to {None} in __init__
+                     => Never set "default values" for an @Argument-property in __init__
+            2. If property value is None, check if the argument parser can supply us
+               with a value for this command-line argument (including default values!)
+            3. ... finally return whatever we got up to now: None.
+        """
+        # Step 1. (see __doc__ above)
+        if  ( not ( propertyvalue is None )):
+              # property has a value ... return it
+              return propertyvalue
+        else: propertyvalue = self.__get_parsed__( propertyvalue ) # Step 2.
+
+        return propertyvalue # Step 3.
+
+    def __get_parsed__( self, chainvalue ):
+        """
+            Returns a value for this argument from the argument parser.
+        """
+        value = None
+        try:
+               value = vars( requestParserInstance().arguments )[ self.argname ]
+        except KeyError:
+               pass # value = None ... no such key!
+        except ReferenceError as err:
+               raise ReferenceError( ERR_MSG_ARGUMENT_ACCESS_BEFORE_PARSING ) from err
+
+        return chainvalue if value is None else value
+
 
     def __call__( self, prop: property ) -> property:
         """
@@ -322,22 +415,28 @@ class Argument( property, ArgumentDecorator ):
               raise AttributeError( gettext( ERR_MSG_OPTIONAL_MISMATCH ) % ( self._nargs, self._propertyname ))
         else: pass
 
+    def _tokwargs( self ):
+        keys   = [ "action", "nargs", "const", "default", "type", "choices", "required", "help", "metavar", "dest" ]
+        kwargs = { }
+        for key in keys:
+            value = getattr( self, key )
+            if  ( not ( value is None )):
+                  kwargs[ key ] = value
+            else: pass
+        return kwargs
+
     def _appendToParser( self, parser: ArgumentParser ):
         """ Append this @Argument to parsers arguments. """
         nmrflgs: Tuple[ str, ... ] = cast( Tuple, self._nameorflags )
-        parser.addArgument( *nmrflgs,                      action   = self.action,   nargs = self.nargs,
-                                   const   = self.const,   default  = self.default,  type  = self.type,
-                                   choices = self.choices, required = self.required, help  = self.help,
-                                   metavar = self.metavar, dest     = self.dest )
+        kwargs = self._tokwargs()
+        parser.addArgument( *nmrflgs, **kwargs )
 
     def _appendToGroup( self, parser: ArgumentParser ):
         """ Append this @Argument to a mutual exclusive parser group. """
         nmrflgs: Tuple[ str, ... ] = cast( Tuple, self._nameorflags )
+        kwargs                     = self._tokwargs()
         group:   str               = cast( str, self.group )
-        parser.addGroupedArgument( group,  *nmrflgs,       action   = self.action,   nargs = self.nargs,
-                                   const   = self.const,   default  = self.default,  type  = self.type,
-                                   choices = self.choices, required = self.required, help  = self.help,
-                                   metavar = self.metavar, dest     = self.dest )
+        parser.addGroupedArgument( group,  *nmrflgs, **kwargs )
 
     def append( self, parser: ArgumentParser ):
         """
@@ -416,6 +515,10 @@ class Argument( property, ArgumentDecorator ):
     def type( self ) -> Optional[ Union[ Type[ bool ], Type[ int ], Type[ float ], Type[ str ]]]:
         """ Returns @Argument 'type'. """
         return self._type
+
+    @property
+    def argname( self ) -> str:
+        return self._argname
 
     def setter( self, fset ):
         """

@@ -5,6 +5,7 @@
 #   argument_utils.py  is distributed WITHOUT ANY WARRANTY; without even the
 #   implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
+import re
 from   gettext                          import gettext
 from   typing                           import Any
 from   typing                           import Final
@@ -35,6 +36,9 @@ def get_flag_and_name( prop: Optional[ property ]) -> Optional[ Tuple[ str, ... 
           name = NAMEPATTERN % propname
           return ( flag, name )
     else: return None
+
+def get_dest_from_arg( argument: str ) -> str:
+    return re.sub( r"-", "_", re.sub( r"^-*", "", argument ))
 
 def get_help_string( prop: Optional[ property ]) -> Optional[ str ]:
     """ retrieve __doc__ string from property and use it as help string """

@@ -33,6 +33,13 @@ def register( decorator: ArgumentDecorator ) -> bool:
     """
     return ArgumentParserWrapper.register( decorator )
 
+def requestInstance() -> ArgumentParser:
+    """
+        Request an [existing] instance of type ArgumentParser.
+        Raise ReferenceError, if not available.
+    """
+    return ArgumentParserWrapper.requestInstance()
+
 def reset() -> None:
     """
         Implemented for testing purposes.

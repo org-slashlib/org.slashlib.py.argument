@@ -68,7 +68,7 @@ class Test_Module_wrapper( TestCase ):
         from org.slashlib.py.argument.typing.argument_decorator import ArgumentDecorator
 
         class Dummy( ArgumentDecorator ):
-            def append( self ):
+            def append( self, parser ):
                 pass
 
         self.assertTrue( ArgumentParserWrapper.register( Dummy()));
@@ -118,7 +118,8 @@ class Test_Module_wrapper( TestCase ):
         from   org.slashlib.py.argument.parser.wrapper  import ArgumentParserWrapper
         # prepare sys.argv
         oldargv  = sys.argv
-        sys.argv = [ '<testarg:program>' ]
+        filename = 'blubb'
+        sys.argv = [ '<testarg:program>', '-f', filename ]
 
         stdout = StringIO()
         stderr = StringIO()
@@ -134,8 +135,52 @@ class Test_Module_wrapper( TestCase ):
                            "configuration filename"
                            pass
 
-                 parser = ArgumentParserWrapper.getInstance()
-                 parser.parse( outstream = stdout, errstream = stderr )
+                 parser = ArgumentParserWrapper.getInstance( "Some Testing" )
+                 parser.parse()
+
+                 foo = MyClass()
+                 self.assertTrue( foo.filename == filename )
+        finally:
+                 sys.argv = oldargv
+                 stdout.close()
+                 stderr.close()
+
+    def test_ArgumentParserWrapper_parse_with_output_redicrection_02( self ):
+        """
+            test if 'ArgumentParserWrapper::parse' can be called.
+            Arguments for redirecting output are passed to the function.
+        """
+        import os
+        import sys
+        from   org.slashlib.py.argument                 import Argument
+        from   org.slashlib.py.argument.parser.wrapper  import ArgumentParserWrapper
+        # prepare sys.argv
+        oldargv  = sys.argv
+        sys.argv = [ '<testarg:program>' ]
+
+        stdout = StringIO()
+        stderr = StringIO()
+
+        try:
+                 # make sure our new argument parser is not pulluted...
+                 ArgumentParserWrapper.reset()
+
+                 class MyClass:
+                       @Argument( "dummy", default = "default blubb" )
+                       @property
+                       def filename( self ) -> str:
+                           "configuration filename"
+                           pass
+                 with self.assertRaises( SystemExit ):
+                      parser = ArgumentParserWrapper.getInstance( "Some Testing" )
+                      parser.parse( outstream = stdout, errstream = stderr )
+
+                 #print()
+                 #print( "stdout: '%s'" % )
+                 #print( "stderr: '%s'" % stderr.getvalue())
+
+                 self.assertTrue( stdout.getvalue() == "" )
+                 self.assertTrue( stderr.getvalue().startswith( "usage: Some Testing [-h] dummy\n" ))
         finally:
                  sys.argv = oldargv
                  stdout.close()

@@ -38,13 +38,22 @@ class ArgumentParserWrapper( ArgumentParser, metaclass = ABCMeta ):
             Returns a singleton, which wraps 'ArgumentParser'
             from pythons package 'argparse'.
         """
+        global ARGUMENTPARSER
         if  ( ARGUMENTPARSER is None ):
               class AnonArgumentParserWrapper( ArgumentParserWrapper ):
                     def __init__( self, prog, usage, description, epilog ):
                         super().__init__( prog, usage, description, epilog )
-                        ARGUMENTPARSER = self
 
-              return AnonArgumentParserWrapper( prog, usage, description, epilog )
+              # scope of ARGUMENTPARSER becomes local if not declared nonlocal or global
+              ARGUMENTPARSER = AnonArgumentParserWrapper( prog, usage, description, epilog )
+        else: pass
+
+        return ARGUMENTPARSER
+
+    @staticmethod
+    def requestInstance() -> ArgumentParser:
+        if  ( ARGUMENTPARSER is None ):
+              raise ReferenceError( "Instance of ArgumentParser is not yet available." )
         else: return ARGUMENTPARSER
 
     @staticmethod
@@ -68,6 +77,7 @@ class ArgumentParserWrapper( ArgumentParser, metaclass = ABCMeta ):
             It can be used to reset (clear) ARGUMENTDECORATORS and ARGUMENTPASER.
         """
         ARGUMENTDECORATORS.clear()
+        global ARGUMENTPARSER
         ARGUMENTPARSER = None
 
     def __init__( self, prog: str        = None, usage: str    = None,
@@ -114,21 +124,23 @@ class ArgumentParserWrapper( ArgumentParser, metaclass = ABCMeta ):
 
         self._groups[ groupname ].add_argument( *nameorflags, **kwargs )
 
-    def parse( self, arguments: str    = None,  outstream: TextIO = sys.stdout,
+    def parse( self, arguments: List[ str ] = None,  outstream: TextIO = sys.stdout,
                      errstream: TextIO = sys.stderr ) -> ArgParseNamespace:
         """
             Parse arguments passed to the script/program
         """
-        if  ( self._arguments is None ):
-              oldstdout  = sys.stdout
-              oldstderr  = sys.stderr
-              sys.stdout = outstream
-              sys.stderr = errstream
+        oldstdout  = sys.stdout
+        oldstderr  = sys.stderr
+        sys.stdout = outstream
+        sys.stderr = errstream
 
-              try:     self._arguments = self._parser.parse_args( arguments )
-              finally:
-                       sys.stdout = oldstdout
-                       sys.stderr = oldstderr
-        else: pass
+        try:
+                 self._arguments = self._parser.parse_args( arguments )
+                 return self._arguments
+        finally:
+                 sys.stdout = oldstdout
+                 sys.stderr = oldstderr
 
+    @property
+    def arguments( self ):
         return self._arguments
